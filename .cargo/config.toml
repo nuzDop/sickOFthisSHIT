@@ -1,0 +1,10 @@
+[unstable]
+build-std-features = ["compiler-builtins-mem"]
+build-std = ["core", "compiler_builtins", "alloc"]
+
+[build]
+target = "x86_64-limitless.json"
+
+# This new section tells `cargo run` how to execute our kernel with QEMU
+[target.'cfg(target_os = "none")']
+runner = "bootloader"

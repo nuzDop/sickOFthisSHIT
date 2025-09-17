@@ -1,0 +1,30 @@
+# GitHub Actions CI - Build Pipeline Stub
+name: LimitlessOS Build
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Toolchain
+        run: |
+          # Stub: Add commands to install Rust, Clang, QEMU, etc.
+          echo "Installing toolchain..."
+
+      - name: Build Project
+        run: |
+          ./build.sh
+
+      - name: Upload ISO Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: limitless-os-iso
+          path: build/limitless-os.iso

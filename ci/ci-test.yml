@@ -1,0 +1,30 @@
+# GitHub Actions CI - Test Pipeline Stub
+name: LimitlessOS Tests
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Toolchain
+        run: |
+          # Stub: Add commands to install Rust, Clang, QEMU, etc.
+          echo "Installing toolchain..."
+
+      - name: Run Unit Tests
+        run: |
+          # Stub: Command to run unit tests
+          echo "Running unit tests..."
+
+      - name: Build and Run Integration Tests
+        run: |
+          make
+          make test
