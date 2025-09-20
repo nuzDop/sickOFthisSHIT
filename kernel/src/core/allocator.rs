@@ -1,34 +1,46 @@
+use bootloader::bootinfo::{MemoryMap, MemoryRegionKind};
+use linked_list_allocator::LockedHeap;
 use x86_64::{
     structures::paging::{mapper::MapToError, FrameAllocator, Mapper, Page, PageTableFlags, Size4KiB},
-    VirtAddr,
+    PhysAddr, VirtAddr,
 };
-use linked_list_allocator::LockedHeap;
 
-// A wrapper around bootloader's frame allocator
-pub struct BootInfoFrameAllocator<I>
-where
-    I: Iterator<Item = x86_64::structures::paging::PhysFrame>,
-{
-    frames: I,
+/// A FrameAllocator that returns usable frames from the bootloader's memory map.
+pub struct BootInfoFrameAllocator {
+    memory_map: &'static MemoryMap,
+    next: usize,
 }
 
-impl<I> BootInfoFrameAllocator<I>
-where
-    I: Iterator<Item = x86_64::structures::paging::PhysFrame>,
-{
-    pub unsafe fn new(frames: I) -> Self {
-        BootInfoFrameAllocator { frames }
+impl BootInfoFrameAllocator {
+    /// Create a new FrameAllocator from the passed memory map.
+    pub unsafe fn new(memory_map: &'static MemoryMap) -> Self {
+        BootInfoFrameAllocator {
+            memory_map,
+            next: 0,
+        }
+    }
+
+    /// Returns an iterator over the usable frames in the memory map.
+    fn usable_frames(&self) -> impl Iterator<Item = x86_64::structures::paging::PhysFrame> {
+        let regions = self.memory_map.iter();
+        let usable_regions = regions
+            .filter(|r| r.region_type == MemoryRegionKind::Usable);
+        let addr_ranges = usable_regions
+            .map(|r| r.range.start_addr()..r.range.end_addr());
+        let frame_addresses = addr_ranges.flat_map(|r| r.step_by(4096));
+        frame_addresses
+            .map(|addr| x86_64::structures::paging::PhysFrame::containing_address(PhysAddr::new(addr)))
     }
 }
 
-unsafe impl<I> FrameAllocator<Size4KiB> for BootInfoFrameAllocator<I>
-where
-    I: Iterator<Item = x86_64::structures::paging::PhysFrame>,
-{
+unsafe impl FrameAllocator<Size4KiB> for BootInfoFrameAllocator {
     fn allocate_frame(&mut self) -> Option<x86_64::structures::paging::PhysFrame> {
-        self.frames.next()
+        let frame = self.usable_frames().nth(self.next);
+        self.next += 1;
+        frame
     }
 }
+
 
 #[global_allocator]
 static ALLOCATOR: LockedHeap = LockedHeap::empty();

@@ -2,22 +2,27 @@
 #![no_main]
 #![feature(abi_x86_interrupt)]
 
-// The alloc crate is now enabled via .cargo/config.toml
 extern crate alloc;
 
-// NOTE: We are temporarily removing the VFS/allocator code to get a clean boot.
-// We will re-add it in the next step.
+#[macro_export]
+macro_rules! print {
+    ($($arg:tt)*) => ($crate::arch::x86_64::vga_buffer::_print(format_args!($($arg)*)));
+}
+
+#[macro_export]
+macro_rules! println {
+    () => ($crate::print!("\n"));
+    ($($arg:tt)*) => ($crate::print!("{}\n", format_args!($($arg)*)));
+}
 
 use core::panic::PanicInfo;
 use bootloader::{entry_point, BootInfo};
 use x86_64::VirtAddr;
 
 mod arch;
-// mod core;
-// mod fs;
-// mod panic; // Panic handler is now in this file
+mod core;
+mod fs;
 
-// New entry point signature for bootloader v0.9
 entry_point!(kernel_main);
 
 fn kernel_main(boot_info: &'static BootInfo) -> ! {
@@ -25,13 +30,36 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     arch::x86_64::vga_buffer::init();
     
     println!("LimitlessOS Kernel -- Booting...");
-    println!("[OK] Boot successful with new bootloader.");
-    println!("\nHalting CPU.");
 
+    // FIX 1: The bootloader v0.9 API provides an Option<u64> for the offset
+    let phys_mem_offset = VirtAddr::new(boot_info.physical_memory_offset.unwrap());
+    
+    // FIX 2: Correctly reference our own modules with `crate::`
+    let mut mapper = unsafe { crate::core::memory::init(phys_mem_offset) };
+    let mut frame_allocator = unsafe {
+        crate::core::allocator::BootInfoFrameAllocator::new(&boot_info.memory_map)
+    };
+
+    crate::core::allocator::init_heap(&mut mapper, &mut frame_allocator)
+        .expect("Heap initialization failed");
+
+    println!("[OK] Kernel Heap Initialized.");
+    
+    fs::init();
+
+    println!("\nTesting VFS...");
+    if let Some(file_content) = fs::vfs::ROOT_FS.lock().as_ref().unwrap().read("/welcome.txt") {
+        // FIX 3: `from_utf8` is in `core::str`
+        let text = core::str::from_utf8(&file_content).unwrap_or("Invalid UTF-8");
+        println!("  Read from /welcome.txt: \"{}\"", text);
+    } else {
+        println!("  Failed to read /welcome.txt");
+    }
+
+    println!("\nInitialization complete. Halting CPU.");
     hlt_loop();
 }
 
-/// A simple loop that repeatedly halts the CPU.
 pub fn hlt_loop() -> ! {
     loop {
         x86_64::instructions::hlt();
