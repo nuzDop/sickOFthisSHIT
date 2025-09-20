@@ -31,10 +31,8 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     
     println!("LimitlessOS Kernel -- Booting...");
 
-    // FIX 1: The bootloader v0.9 API provides an Option<u64> for the offset
     let phys_mem_offset = VirtAddr::new(boot_info.physical_memory_offset.unwrap());
     
-    // FIX 2: Correctly reference our own modules with `crate::`
     let mut mapper = unsafe { crate::core::memory::init(phys_mem_offset) };
     let mut frame_allocator = unsafe {
         crate::core::allocator::BootInfoFrameAllocator::new(&boot_info.memory_map)
@@ -49,7 +47,6 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
 
     println!("\nTesting VFS...");
     if let Some(file_content) = fs::vfs::ROOT_FS.lock().as_ref().unwrap().read("/welcome.txt") {
-        // FIX 3: `from_utf8` is in `core::str`
         let text = core::str::from_utf8(&file_content).unwrap_or("Invalid UTF-8");
         println!("  Read from /welcome.txt: \"{}\"", text);
     } else {

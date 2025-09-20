@@ -3,7 +3,7 @@ use alloc::string::String;
 use alloc::vec::Vec;
 use spin::Mutex;
 
-// Add `Send + Sync` to the trait definition to make it thread-safe
+// Add `Send + Sync` to the trait definition
 pub trait FileSystem: Send + Sync {
     fn read(&self, path: &str) -> Option<Vec<u8>>;
     fn write(&self, path: &str, data: &[u8]) -> Result<(), &'static str>;

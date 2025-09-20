@@ -5,14 +5,12 @@ use x86_64::{
     PhysAddr, VirtAddr,
 };
 
-/// A FrameAllocator that returns usable frames from the bootloader's memory map.
 pub struct BootInfoFrameAllocator {
     memory_map: &'static MemoryMap,
     next: usize,
 }
 
 impl BootInfoFrameAllocator {
-    /// Create a new FrameAllocator from the passed memory map.
     pub unsafe fn new(memory_map: &'static MemoryMap) -> Self {
         BootInfoFrameAllocator {
             memory_map,
@@ -20,7 +18,6 @@ impl BootInfoFrameAllocator {
         }
     }
 
-    /// Returns an iterator over the usable frames in the memory map.
     fn usable_frames(&self) -> impl Iterator<Item = x86_64::structures::paging::PhysFrame> {
         let regions = self.memory_map.iter();
         let usable_regions = regions
@@ -40,7 +37,6 @@ unsafe impl FrameAllocator<Size4KiB> for BootInfoFrameAllocator {
         frame
     }
 }
-
 
 #[global_allocator]
 static ALLOCATOR: LockedHeap = LockedHeap::empty();
